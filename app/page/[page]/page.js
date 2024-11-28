@@ -1,48 +1,89 @@
-import path from 'path';
-import { promises as fs } from 'fs';
+'use client'; // Mark as a Client Component
 
-const PAGE_SIZE = 1000;
+import { use, useState, useEffect } from 'react';
 
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get('page') || '1', 10);
+export default function Page({ params }) {
+  // Unwrap `params` using `use`
+  const pageParams = use(params);
+  const [data, setData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
-  try {
-    // Determine which file to read based on the page number
-    const fileIndex = Math.ceil(page / 10);
-    const filePath = path.join(process.cwd(), 'app/data', `webs_${fileIndex}.json`);
-    const fileContent = await fs.readFile(filePath, 'utf-8');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Parse the `page` parameter
+        const page = parseInt(pageParams.page, 10) || 1;
+        setCurrentPage(page);
 
-    // Validate file content
-    if (!fileContent) {
-      return new Response(JSON.stringify({ error: 'File is empty' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+        // Fetch data from the API
+        const response = await fetch(`/api/getData?page=${page}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch data');
+        }
 
-    const data = JSON.parse(fileContent);
-
-    // Slice the data for pagination
-    const startIndex = ((page - 1) % 10) * PAGE_SIZE;
-    const endIndex = startIndex + PAGE_SIZE;
-    const pageData = data.slice(startIndex, endIndex);
-
-    return new Response(
-      JSON.stringify({
-        data: pageData,
-        totalPages: Math.ceil(100000 / PAGE_SIZE),
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        const result = await response.json();
+        setData(result.data || []);
+        setTotalPages(result.totalPages || 0);
+      } catch (error) {
+        console.error('Error fetching data:', error.message);
       }
-    );
-  } catch (error) {
-    console.error('Error in API:', error.message);
-    return new Response(JSON.stringify({ error: 'Failed to load data' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+    };
+
+    fetchData();
+  }, [pageParams]);
+
+  return (
+    <div className="container">
+      <h1>Page {currentPage}</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Domain</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item, index) => (
+            <tr key={index}>
+              <td>{item.Rank}</td>
+              <td>{item.Domain}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <footer>
+        <p>Page {currentPage} of {totalPages}</p>
+      </footer>
+      <style jsx>{`
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 667px;
+          max-width: 375px;
+          margin: 0 auto;
+          font-family: Arial, sans-serif;
+          padding: 1rem;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1rem 0;
+        }
+        th, td {
+          border: 1px solid #ddd;
+          text-align: left;
+          padding: 8px;
+        }
+        th {
+          background-color: #f4f4f4;
+        }
+        footer {
+          margin-top: 1rem;
+        }
+      `}</style>
+    </div>
+  );
 }
