@@ -1,9 +1,8 @@
-'use client'; // Mark as a Client Component
+'use client';
 
 import { use, useState, useEffect } from 'react';
 
 export default function Page({ params }) {
-  // Unwrap `params` using `use`
   const pageParams = use(params);
   const [data, setData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -12,11 +11,9 @@ export default function Page({ params }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Parse the `page` parameter
         const page = parseInt(pageParams.page, 10) || 1;
         setCurrentPage(page);
 
-        // Fetch data from the API
         const response = await fetch(`/api/getData?page=${page}`);
         if (!response.ok) {
           throw new Error('Failed to fetch data');
@@ -44,13 +41,18 @@ export default function Page({ params }) {
           </tr>
         </thead>
         <tbody>
-          {data.map((item, index) => (
-            <tr key={index}>
-              <td>{item.Rank}</td>
-              <td>{item.Domain}</td>
-            </tr>
-          ))}
-        </tbody>
+  {data.map((item, index) => (
+    <tr key={index}>
+      <td>{item.Rank}</td>
+      <td>
+        <a href={`/domain/${item.Domain}`} title={`Details about ${item.Domain}`}>
+          {item.Domain}
+        </a>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
       </table>
       <footer>
         <p>Page {currentPage} of {totalPages}</p>
