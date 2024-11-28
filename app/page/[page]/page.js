@@ -1,117 +1,48 @@
-'use client'; // Mark this as a Client Component
+import path from 'path';
+import { promises as fs } from 'fs';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-
-// Constants
 const PAGE_SIZE = 1000;
 
-export default function Page({ params }) {
-  const [data, setData] = useState([]);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get('page') || '1', 10);
 
-  // Resolve `params` before accessing `params.page`
-  useEffect(() => {
-    (async () => {
-      const resolvedParams = await params;
-      const page = parseInt(resolvedParams.page, 10) || 1;
-      setCurrentPage(page);
+  try {
+    // Determine which file to read based on the page number
+    const fileIndex = Math.ceil(page / 10);
+    const filePath = path.join(process.cwd(), 'app/data', `webs_${fileIndex}.json`);
+    const fileContent = await fs.readFile(filePath, 'utf-8');
 
-      // Fetch paginated data
-      const response = await fetch(`/api/getData?page=${page}`);
-      const result = await response.json();
-      setData(result.data);
-      setTotalPages(result.totalPages);
-    })();
-  }, [params]);
+    // Validate file content
+    if (!fileContent) {
+      return new Response(JSON.stringify({ error: 'File is empty' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-  return (
-    <div className="container">
-      <header>
-        <h1>SEO Optimized Domains - Page {currentPage}</h1>
-      </header>
+    const data = JSON.parse(fileContent);
 
-      <main>
-        <section>
-          <h2>Featured Domains</h2>
-          <ul>
-            {data.map((item) => (
-              <li key={item.Rank}>
-                <Link href={`/domain/${item.Domain}`}>
-                  {item.Rank}. {item.Domain}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+    // Slice the data for pagination
+    const startIndex = ((page - 1) % 10) * PAGE_SIZE;
+    const endIndex = startIndex + PAGE_SIZE;
+    const pageData = data.slice(startIndex, endIndex);
 
-        {/* Pagination */}
-        <div className="pagination">
-          {currentPage > 1 && (
-            <Link href={`/page/${currentPage - 1}`}>Previous</Link>
-          )}
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          {currentPage < totalPages && (
-            <Link href={`/page/${currentPage + 1}`}>Next</Link>
-          )}
-        </div>
-      </main>
-
-      <footer>
-        <p>&copy; 2024 My App. All rights reserved.</p>
-      </footer>
-
-      <style jsx>{`
-        .container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          font-family: Arial, sans-serif;
-        }
-        header {
-          background-color: #0070f3;
-          color: white;
-          width: 40%;
-          text-align: center;
-          padding: 1rem;
-        }
-        h1 {
-          font-size: 1.5rem;
-        }
-        main {
-          padding: 1rem;
-          width: 40%;
-        }
-        ul {
-          list-style: none;
-          padding: 0;
-        }
-        li {
-          margin: 0.5rem 0;
-        }
-        a {
-          text-decoration: none;
-          color: #0070f3;
-        }
-        a:hover {
-          text-decoration: underline;
-        }
-        .pagination {
-          display: flex;
-          justify-content: space-between;
-          width: 40%;
-          margin-top: 1rem;
-        }
-        footer {
-          background-color: #f5f5f5;
-          width: 40%;
-          text-align: center;
-          padding: 1rem;
-        }
-      `}</style>
-    </div>
-  );
+    return new Response(
+      JSON.stringify({
+        data: pageData,
+        totalPages: Math.ceil(100000 / PAGE_SIZE),
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    console.error('Error in API:', error.message);
+    return new Response(JSON.stringify({ error: 'Failed to load data' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 }
