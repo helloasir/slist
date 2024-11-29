@@ -41,18 +41,13 @@ export default function Page({ params }) {
           </tr>
         </thead>
         <tbody>
-  {data.map((item, index) => (
-    <tr key={index}>
-      <td>{item.Rank}</td>
-      <td>
-        <a href={`/domain/${item.Domain}`} title={`Details about ${item.Domain}`}>
-          {item.Domain}
-        </a>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
+          {data.map((item, index) => (
+            <tr key={index}>
+              <td>{item.Rank}</td>
+              <td>{item.Domain}</td>
+            </tr>
+          ))}
+        </tbody>
       </table>
       <footer>
         <p>Page {currentPage} of {totalPages}</p>
